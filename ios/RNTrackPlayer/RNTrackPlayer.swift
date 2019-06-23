@@ -20,6 +20,8 @@ public class RNTrackPlayer: RCTEventEmitter {
         return player
     }()
     
+    private var urlDecode: Bool = true
+    
     // MARK: - Lifecycle Methods
     
     deinit {
@@ -99,6 +101,8 @@ public class RNTrackPlayer: RCTEventEmitter {
         var sessionCategory: AVAudioSession.Category = .playback
         var sessionCategoryOptions: AVAudioSession.CategoryOptions = []
         var sessionCategoryMode: AVAudioSession.Mode = .default
+
+        self.urlDecode = config["iosUrlDecoding"] as? Bool ?? true
 
         if
             let sessionCategoryStr = config["iosCategory"] as? String,
@@ -237,7 +241,7 @@ public class RNTrackPlayer: RCTEventEmitter {
 
         var tracks = [Track]()
         for trackDict in trackDicts {
-            guard let track = Track(dictionary: trackDict) else {
+            guard let track = Track(dictionary: trackDict, urlDecode: self.urlDecode) else {
                 reject("invalid_track_object", "Track is missing a required key", nil)
                 return
             }

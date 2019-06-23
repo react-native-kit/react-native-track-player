@@ -28,11 +28,11 @@ class Track: NSObject, AudioItem, TimePitching {
     
     private var originalObject: [String: Any]
     
-    init?(dictionary: [String: Any]) {
+    init?(dictionary: [String: Any], urlDecode: Bool = true) {
         guard let id = dictionary["id"] as? String,
             let title = dictionary["title"] as? String,
             let artist = dictionary["artist"] as? String,
-            let url = MediaURL(object: dictionary["url"])
+            let url = MediaURL(object: dictionary["url"], urlDecode)
             else { return nil }
         
         self.id = id
@@ -46,7 +46,7 @@ class Track: NSObject, AudioItem, TimePitching {
         self.desc = dictionary["description"] as? String
         self.pitchAlgorithm = dictionary["pitchAlgorithm"] as? String
         self.duration = dictionary["duration"] as? Double
-        self.artworkURL = MediaURL(object: dictionary["artwork"])
+        self.artworkURL = MediaURL(object: dictionary["artwork"], urlDecode)
         
         self.originalObject = dictionary
     }

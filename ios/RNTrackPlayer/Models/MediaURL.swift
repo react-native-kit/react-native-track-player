@@ -13,7 +13,7 @@ struct MediaURL {
     let isLocal: Bool
     private let originalObject: Any
     
-    init?(object: Any?) {
+    init?(object: Any?, urlDecode: Bool) {
         guard let object = object else { return nil }
         originalObject = object
         
@@ -26,7 +26,7 @@ struct MediaURL {
             let url = object as! String
             let urlencoded = url.removingPercentEncoding
             isLocal = url.lowercased().hasPrefix("file://")
-            if let encoded = urlencoded!.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlFragmentAllowed
+            if urlDecode, let encoded = urlencoded!.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlFragmentAllowed
                 .union(.urlHostAllowed)
                 .union(.urlPasswordAllowed)
                 .union(.urlQueryAllowed)

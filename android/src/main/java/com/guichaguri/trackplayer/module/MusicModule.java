@@ -9,6 +9,7 @@ import android.os.IBinder;
 import android.support.v4.media.RatingCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.facebook.react.bridge.*;
 import com.google.android.exoplayer2.C;
@@ -21,6 +22,9 @@ import com.guichaguri.trackplayer.service.player.ExoPlayback;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+
+import android.media.AudioManager;
+import android.bluetooth.BluetoothHeadset;
 
 /**
  * @author Guichaguri
@@ -48,8 +52,13 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
         ReactContext context = getReactApplicationContext();
         LocalBroadcastManager manager = LocalBroadcastManager.getInstance(context);
 
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(AudioManager.ACTION_HEADSET_PLUG);
+        filter.addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED);
+        filter.addAction(Utils.EVENT_INTENT);
+
         eventHandler = new MusicEvents(context);
-        manager.registerReceiver(eventHandler, new IntentFilter(Utils.EVENT_INTENT));
+        manager.registerReceiver(eventHandler, filter);
     }
 
     @Override
@@ -66,31 +75,39 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
 
     @Override
     public void onServiceConnected(ComponentName name, IBinder service) {
-        binder = (MusicBinder)service;
-        connecting = false;
+        synchronized(this) {
+            binder = (MusicBinder) service;
+            connecting = false;
 
         // Reapply options that user set before with updateOptions
-        if (options != null) {
-            binder.updateOptions(options);
-        }
+            if (options != null) {
+                binder.updateOptions(options);
+            }
 
-        // Triggers all callbacks
-        while(!initCallbacks.isEmpty()) {
-            binder.post(initCallbacks.remove());
+            // Triggers all callbacks
+            while (!initCallbacks.isEmpty()) {
+                binder.post(initCallbacks.remove());
+            }
         }
     }
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
-        binder = null;
-        connecting = false;
+        synchronized(this) {
+            binder = null;
+            connecting = false;
+        }
+    }
+
+    private boolean isBinderReady() {
+        return binder != null && binder.isReadyForPost();
     }
 
     /**
      * Waits for a connection to the service and/or runs the {@link Runnable} in the player thread
      */
     private void waitForConnection(Runnable r) {
-        if(binder != null) {
+        if(isBinderReady()) {
             binder.post(r);
             return;
         } else {
@@ -103,11 +120,19 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
 
         // Binds the service to get a MediaWrapper instance
         Intent intent = new Intent(context, MusicService.class);
-        context.startService(intent);
+        ContextCompat.startForegroundService(context, intent);
         intent.setAction(Utils.CONNECT_INTENT);
         context.bindService(intent, this, 0);
 
         connecting = true;
+    }
+
+    private void runOnConnectionOrReject(final Promise callback, Runnable r) {
+        if(isBinderReady()) {
+            binder.post(r);
+        } else {
+            callback.reject("playback", "The playback is not initialized");
+        }
     }
 
     /* ****************************** API ****************************** */
@@ -152,18 +177,25 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
     }
 
     @ReactMethod
-    public void setupPlayer(ReadableMap data, final Promise promise) {
+    public synchronized void setupPlayer(ReadableMap data, final Promise promise) {
         final Bundle options = Arguments.toBundle(data);
 
         waitForConnection(() -> binder.setupPlayer(options, promise));
     }
 
     @ReactMethod
-    public void destroy() {
+    public void isServiceRunning(final Promise promise) {
+        promise.resolve(isBinderReady());
+    }
+
+    @ReactMethod
+    public synchronized void destroy() {
         try {
-            if(binder != null) {
-                binder.destroy();
-                binder = null;
+            synchronized(this) {
+                if(binder != null) {
+                    binder.destroy();
+                    binder = null;
+                }
             }
 
             ReactContext context = getReactApplicationContext();
@@ -175,21 +207,21 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
     }
 
     @ReactMethod
-    public void updateOptions(ReadableMap data, final Promise callback) {
+    public synchronized void updateOptions(ReadableMap data, final Promise callback) {
         // keep options as we may need them for correct MetadataManager reinitialization later
         options = Arguments.toBundle(data);
 
-        waitForConnection(() -> {
+        runOnConnectionOrReject(callback, () -> {
             binder.updateOptions(options);
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void add(ReadableArray tracks, final String insertBeforeId, final Promise callback) {
+    public synchronized void add(ReadableArray tracks, final String insertBeforeId, final Promise callback) {
         final ArrayList bundleList = Arguments.toList(tracks);
 
-        waitForConnection(() -> {
+        runOnConnectionOrReject(callback, () -> {
             List<Track> trackList;
 
             try {
@@ -226,10 +258,10 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
     }
 
     @ReactMethod
-    public void remove(ReadableArray tracks, final Promise callback) {
+    public synchronized void remove(ReadableArray tracks, final Promise callback) {
         final ArrayList trackList = Arguments.toList(tracks);
 
-        waitForConnection(() -> {
+        runOnConnectionOrReject(callback, () -> {
             List<Track> queue = binder.getPlayback().getQueue();
             List<Integer> indexes = new ArrayList<>();
 
@@ -253,8 +285,8 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
     }
 
     @ReactMethod
-    public void updateMetadataForTrack(String id, ReadableMap map, final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void updateMetadataForTrack(String id, ReadableMap map, final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             ExoPlayback playback = binder.getPlayback();
             List<Track> queue = playback.getQueue();
             Track track = null;
@@ -280,63 +312,71 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
     }
 
     @ReactMethod
-    public void removeUpcomingTracks(final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void removeUpcomingTracks(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             binder.getPlayback().removeUpcomingTracks();
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void skip(final String track, final Promise callback) {
-        waitForConnection(() -> binder.getPlayback().skip(track, callback));
+    public synchronized void skip(final String track, final Promise callback) {
+        runOnConnectionOrReject(callback, () -> binder.getPlayback().skip(track, callback));
     }
 
     @ReactMethod
-    public void skipToNext(final Promise callback) {
-        waitForConnection(() -> binder.getPlayback().skipToNext(callback));
+    public synchronized void skipToNext(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> binder.getPlayback().skipToNext(callback));
     }
 
     @ReactMethod
-    public void skipToPrevious(final Promise callback) {
-        waitForConnection(() -> binder.getPlayback().skipToPrevious(callback));
+    public synchronized void skipToPrevious(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> binder.getPlayback().skipToPrevious(callback));
     }
 
     @ReactMethod
-    public void reset(final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void reset(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             binder.getPlayback().reset();
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void play(final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void play(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             binder.getPlayback().play();
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void pause(final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void playWithEarPiece(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
+            binder.getPlayback().playWithEarPiece();
+            callback.resolve(null);
+        });
+    }
+
+    @ReactMethod
+    public synchronized void pause(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             binder.getPlayback().pause();
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void stop(final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void stop(final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             binder.getPlayback().stop();
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void seekTo(final float seconds, final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void seekTo(final float seconds, final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             long secondsToSkip = Utils.toMillis(seconds);
             binder.getPlayback().seekTo(secondsToSkip);
             callback.resolve(null);
@@ -344,115 +384,144 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
     }
 
     @ReactMethod
-    public void setVolume(final float volume, final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void setVolume(final float volume, final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             binder.getPlayback().setVolume(volume);
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void getVolume(final Promise callback) {
-        waitForConnection(() -> callback.resolve(binder.getPlayback().getVolume()));
+    public synchronized void getVolume(final Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> callback.resolve(binder.getPlayback().getVolume()));
+        } else {
+            callback.resolve(null);
+        }
     }
 
     @ReactMethod
-    public void setRate(final float rate, final Promise callback) {
-        waitForConnection(() -> {
+    public synchronized void setRate(final float rate, final Promise callback) {
+        runOnConnectionOrReject(callback, () -> {
             binder.getPlayback().setRate(rate);
             callback.resolve(null);
         });
     }
 
     @ReactMethod
-    public void getRate(final Promise callback) {
-        waitForConnection(() -> callback.resolve(binder.getPlayback().getRate()));
-    }
+    public synchronized void getRate(final Promise callback) {
 
-    @ReactMethod
-    public void getTrack(final String id, final Promise callback) {
-        waitForConnection(() -> {
-            List<Track> tracks = binder.getPlayback().getQueue();
-
-            for(Track track : tracks) {
-                if(track.id.equals(id)) {
-                    callback.resolve(Arguments.fromBundle(track.originalItem));
-                    return;
-                }
-            }
-
+        if(isBinderReady()) {
+            binder.post(() -> callback.resolve(binder.getPlayback().getRate()));
+        } else {
             callback.resolve(null);
-        });
+        }
     }
 
     @ReactMethod
-    public void getQueue(Promise callback) {
-        waitForConnection(() -> {
-            List queue = new ArrayList();
-            List<Track> tracks = binder.getPlayback().getQueue();
-
-            for(Track track : tracks) {
-                queue.add(track.originalItem);
-            }
-
-            callback.resolve(Arguments.fromList(queue));
-        });
-    }
-
-    @ReactMethod
-    public void getCurrentTrack(final Promise callback) {
-        waitForConnection(() -> {
-            Track track = binder.getPlayback().getCurrentTrack();
-
-            if(track == null) {
+    public synchronized void getTrack(final String id, final Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> {
+                List<Track> tracks = binder.getPlayback().getQueue();
+                for(Track track : tracks) {
+                    if(track.id.equals(id)) {
+                        callback.resolve(Arguments.fromBundle(track.originalItem));
+                        return;
+                    }
+                }
                 callback.resolve(null);
-            } else {
-                callback.resolve(track.id);
-            }
-        });
+            });
+        } else {
+            callback.resolve(null);
+        }
     }
 
     @ReactMethod
-    public void getDuration(final Promise callback) {
-        waitForConnection(() -> {
-            long duration = binder.getPlayback().getDuration();
-
-            if(duration == C.TIME_UNSET) {
-                callback.resolve(Utils.toSeconds(0));
-            } else {
-                callback.resolve(Utils.toSeconds(duration));
-            }
-        });
+    public synchronized void getQueue(Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> {
+                List queue = new ArrayList();
+                List<Track> tracks = binder.getPlayback().getQueue();
+                for(Track track : tracks) {
+                    queue.add(track.originalItem);
+                }
+                callback.resolve(Arguments.fromList(queue));
+            });
+        } else {
+            callback.resolve(new ArrayList());
+        }
     }
 
     @ReactMethod
-    public void getBufferedPosition(final Promise callback) {
-        waitForConnection(() -> {
-            long position = binder.getPlayback().getBufferedPosition();
-
-            if(position == C.POSITION_UNSET) {
-                callback.resolve(Utils.toSeconds(0));
-            } else {
-                callback.resolve(Utils.toSeconds(position));
-            }
-        });
+    public synchronized void getCurrentTrack(final Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> {
+                Track track = binder.getPlayback().getCurrentTrack();
+                if(track == null) {
+                    callback.resolve(null);
+                } else {
+                    callback.resolve(track.id);
+                }
+            });
+        } else {
+            callback.resolve(null);
+        }
     }
 
     @ReactMethod
-    public void getPosition(final Promise callback) {
-        waitForConnection(() -> {
-            long position = binder.getPlayback().getPosition();
-
-            if(position == C.POSITION_UNSET) {
-                callback.reject("unknown", "Unknown position");
-            } else {
-                callback.resolve(Utils.toSeconds(position));
-            }
-        });
+    public synchronized void getDuration(final Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> {
+                long duration = binder.getPlayback().getDuration();
+                if(duration == C.TIME_UNSET) {
+                    callback.resolve(Utils.toSeconds(0));
+                } else {
+                    callback.resolve(Utils.toSeconds(duration));
+                }
+            });
+        } else {
+            callback.resolve(Utils.toSeconds(0));
+        }
     }
 
     @ReactMethod
-    public void getState(final Promise callback) {
-        waitForConnection(() -> callback.resolve(binder.getPlayback().getState()));
+    public synchronized void getBufferedPosition(final Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> {
+                long position = binder.getPlayback().getBufferedPosition();
+                if(position == C.POSITION_UNSET) {
+                    callback.resolve(Utils.toSeconds(0));
+                } else {
+                    callback.resolve(Utils.toSeconds(position));
+                }
+            });
+        } else {
+            callback.resolve(Utils.toSeconds(0));
+        }
+    }
+
+    @ReactMethod
+    public synchronized void getPosition(final Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> {
+                long position = binder.getPlayback().getPosition();
+                if(position == C.POSITION_UNSET) {
+                    callback.reject("unknown", "Unknown position");
+                } else {
+                    callback.resolve(Utils.toSeconds(position));
+                }
+            });
+        } else {
+            callback.reject("unknown", "Unknown position");
+        }
+    }
+
+    @ReactMethod
+    public synchronized void getState(final Promise callback) {
+        if(isBinderReady()) {
+            binder.post(() -> callback.resolve(binder.getPlayback().getState()));
+        } else {
+            callback.resolve(PlaybackStateCompat.STATE_NONE);
+        }
     }
 }

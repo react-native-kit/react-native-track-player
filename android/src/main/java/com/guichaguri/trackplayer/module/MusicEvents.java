@@ -4,10 +4,15 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter;
+
+import android.media.AudioManager;
+import android.bluetooth.BluetoothHeadset;
+import com.guichaguri.trackplayer.service.Utils;
 
 /**
  * @author Guichaguri
@@ -36,6 +41,13 @@ public class MusicEvents extends BroadcastReceiver {
     public static final String PLAYBACK_METADATA = "playback-metadata-received";
     public static final String PLAYBACK_ERROR = "playback-error";
 
+    // Audio Events
+    public static final String HEADSET_PLUGGED_IN = "headset-plugged-in";
+    public static final String HEADSET_PLUGGED_OUT = "headset-plugged-out";
+
+    public static final String BLUETOOTH_CONNECTED = "bluetooth-connected";
+    public static final String BLUETOOTH_DISCONNECTED = "bluetooth-disconnected";
+
     private final ReactContext reactContext;
 
     public MusicEvents(ReactContext reactContext) {
@@ -50,6 +62,7 @@ public class MusicEvents extends BroadcastReceiver {
         WritableMap map = data != null ? Arguments.fromBundle(data) : null;
 
         reactContext.getJSModule(RCTDeviceEventEmitter.class).emit(event, map);
+
     }
 
 }

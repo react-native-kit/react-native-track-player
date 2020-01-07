@@ -255,6 +255,10 @@ public abstract class ExoPlayback<T extends Player> implements EventListener, Me
             }
 
             manager.onTrackUpdate(previous, lastKnownPosition, next);
+
+            if (next.initialTime != 0) {
+                player.seekTo(next.initialTime * 1000);
+            }
         }
 
         lastKnownWindow = player.getCurrentWindowIndex();

@@ -7,6 +7,7 @@ import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
+
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -32,6 +33,9 @@ import static android.support.v4.media.MediaMetadataCompat.*;
  * @author Guichaguri
  */
 public class Track {
+
+    // Multiplier to convert seconds to microseconds.
+    private static final long SEC_TO_US = 1000000;
 
     public static List<Track> createTracks(Context context, List objects, int ratingType) {
         List<Track> tracks = new ArrayList<>();
@@ -64,6 +68,7 @@ public class Track {
     public String date;
     public String genre;
     public long duration;
+    public long initialTime;
     public Bundle originalItem;
 
     public RatingCompat rating;
@@ -84,6 +89,7 @@ public class Track {
         }
 
         String trackType = bundle.getString("type", "default");
+        initialTime = Utils.getInt(bundle,"initialTime", 0);
 
         for(TrackType t : TrackType.values()) {
             if(t.name.equalsIgnoreCase(trackType)) {

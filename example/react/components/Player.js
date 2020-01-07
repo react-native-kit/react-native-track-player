@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     backgroundColor: "grey"
   },
   progress: {
-    height: 1,
+    height: 10,
     width: "90%",
     marginTop: 10,
     flexDirection: "row"

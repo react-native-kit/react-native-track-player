@@ -103,7 +103,7 @@ If the player is already initialized, the promise will resolve instantly.
 
 | Param                | Type     | Description   | Default   | Android | iOS | Windows |
 | -------------------- | -------- | ------------- | --------- | :-----: | :-: | :-----: |
-| options              | `object` | The options   | 
+| options              | `object` | The options   |
 | options.minBuffer    | `number` | Minimum time in seconds that needs to be buffered | 15 | ✓ | ✗ | ✗ |
 | options.maxBuffer    | `number` | Maximum time in seconds that needs to be buffered | 50 | ✓ | ✗ | ✗ |
 | options.playBuffer   | `number` | Minimum time in seconds that needs to be buffered to start playing | 2.5 | ✓ | ✗ | ✗ |
@@ -242,6 +242,7 @@ Some parameters are unused depending on platform.
 | options.jumpInterval | `number` | The interval in seconds for the jump forward/backward buttons | ✓ | ✓ | ✓ |
 | options.stopWithApp | `boolean` | Whether the player will be destroyed when the app closes | ✓ | ✗ | ✗ |
 | options.alwaysPauseOnInterruption | `boolean` | Whether the `remote-duck` event will be triggered on every interruption | ✓ | ✗ | ✗ |
+| options.isLiveStreamSource | `boolean` | If iOS lock screen player should display progress or 'Live' | ✗ | ✓ | ✗ |
 | options.capabilities | `array` of [Capability Constants](#capability) | The media controls that will be enabled | ✓ | ✓ | ✓ |
 | options.notificationCapabilities | `array` of [Capability Constants](#capability) | The buttons that it will show in the notification. Defaults to `data.capabilities`  | ✓ | ✗ | ✗ |
 | options.compactCapabilities | `array` of [Capability Constants](#capability) | The buttons that it will show in the compact notification | ✓ | ✗ | ✗ |
@@ -511,7 +512,7 @@ For more information about Resource Objects, read the [Images](https://facebook.
 
 ## React Hooks
 
-React v16.8 introduced [hooks](https://reactjs.org/docs/hooks-intro.html). If you are using a version of React Native that is before [v0.59.0](https://facebook.github.io/react-native/blog/2019/03/12/releasing-react-native-059), your React Native version does not support hooks. 
+React v16.8 introduced [hooks](https://reactjs.org/docs/hooks-intro.html). If you are using a version of React Native that is before [v0.59.0](https://facebook.github.io/react-native/blog/2019/03/12/releasing-react-native-059), your React Native version does not support hooks.
 
 #### useTrackPlayerEvents
 Register an event listener for one or more of the [events](#events) emitted by the TrackPlayer. The subscription is removed when the component unmounts.
@@ -547,7 +548,7 @@ const MyComponent = () => {
     <View>
       <Text>The TrackPlayer is {isPlaying ? 'playing' : 'not playing'}</Text>
     </View>
-  ); 
+  );
 };
 ```
 

@@ -146,8 +146,8 @@ android {
 dependencies {
     implementation project(':react-native-gesture-handler')
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation "com.android.support:appcompat-v7:27.1.1"
     implementation "com.facebook.react:react-native:+"  // From node_modules
+    implementation "org.webkit:android-jsc:+"  // From node_modules
     implementation project(':react-native-track-player')
 }
 

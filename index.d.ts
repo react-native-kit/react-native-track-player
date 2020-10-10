@@ -141,6 +141,7 @@ declare namespace RNTrackPlayer {
   export function stop(): Promise<void>;
   export function seekTo(seconds: number): Promise<void>;
   export function setVolume(level: number): Promise<void>;
+  export function setPreferredPeakBitRate(value: number): Promise<void>;
   export function setRate(rate: number): Promise<void>;
 
   // Player Getters
@@ -149,6 +150,7 @@ declare namespace RNTrackPlayer {
   export function getTrack(id: string): Promise<Track>;
   export function getCurrentTrack(): Promise<string>;
   export function getVolume(): Promise<number>;
+  export function getPreferredPeakBitRate(): Promise<number>;
   export function getDuration(): Promise<number>;
   export function getPosition(): Promise<number>;
   export function getBufferedPosition(): Promise<number>;

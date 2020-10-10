@@ -432,6 +432,23 @@ public class RNTrackPlayer: RCTEventEmitter {
         print("Getting current volume")
         resolve(player.volume)
     }
+
+    @objc(setPreferredPeakBitRate:resolver:rejecter:)
+    public func setTestRate(value: Double, resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
+        if let currentItem = player.wrapper.currentItem {
+            currentItem.preferredPeakBitRate = value
+        }
+        resolve(NSNull())
+    }
+
+    @objc(getPreferredPeakBitRate:rejecter:)
+    public func getPreferredPeakBitRate(resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
+        print("Getting current preferredPeakBitRate")
+        if let currentItem = player.wrapper.currentItem {
+            resolve(currentItem.preferredPeakBitRate)
+        }
+
+    }
     
     @objc(setRate:resolver:rejecter:)
     public func setRate(rate: Float, resolve: RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {

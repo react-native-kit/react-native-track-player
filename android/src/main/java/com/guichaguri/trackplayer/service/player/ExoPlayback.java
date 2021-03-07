@@ -234,7 +234,7 @@ public abstract class ExoPlayback<T extends Player> implements EventListener, Me
     public void onTimelineChanged(@NonNull Timeline timeline, int reason) {
         Log.d(Utils.LOG, "onTimelineChanged: " + reason);
 
-        if((reason == Player.TIMELINE_CHANGE_REASON_PREPARED || reason == Player.TIMELINE_CHANGE_REASON_DYNAMIC) && !timeline.isEmpty()) {
+        if((reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED || reason == Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE) && !timeline.isEmpty()) {
             onPositionDiscontinuity(Player.DISCONTINUITY_REASON_INTERNAL);
         }
     }

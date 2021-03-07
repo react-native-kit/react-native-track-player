@@ -43,6 +43,11 @@
   },
   "scripts": {
   },
+  "dependencies": {
+    "lodash": "4.17.10",
+    "prop-types": "15.6.1",
+    "rn-multi-tenant-async-storage": "0.0.5"
+  },
   "peerDependencies": {
     "react": ">=16.8.6",
     "react-native": ">=0.60.0-rc.2"

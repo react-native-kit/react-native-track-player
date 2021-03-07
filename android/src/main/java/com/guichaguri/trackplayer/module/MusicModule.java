@@ -1,9 +1,12 @@
 package com.guichaguri.trackplayer.module;
 
+import android.util.Log;
+
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.media.RatingCompat;
@@ -12,15 +15,20 @@ import android.util.Log;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.facebook.react.bridge.*;
 import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.offline.Download;
 import com.guichaguri.trackplayer.service.MusicBinder;
 import com.guichaguri.trackplayer.service.MusicService;
 import com.guichaguri.trackplayer.service.Utils;
 import com.guichaguri.trackplayer.service.models.Track;
 import com.guichaguri.trackplayer.service.player.ExoPlayback;
+import za.co.digitalwaterfall.reactnativemediasuite.mediadownloader.downloader.DownloadTracker;
+import za.co.digitalwaterfall.reactnativemediasuite.mediadownloader.downloader.DownloadUtil;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+
+import static za.co.digitalwaterfall.reactnativemediasuite.mediadownloader.downloader.DownloadUtil.TAG;
 
 /**
  * @author Guichaguri
@@ -33,8 +41,15 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
     private boolean connecting = false;
     private Bundle options;
 
+    ReactApplicationContext ctx = null;
+    private DownloadTracker downloadTracker;
+
     public MusicModule(ReactApplicationContext reactContext) {
+
         super(reactContext);
+
+        ctx = reactContext;
+        downloadTracker = DownloadUtil.getDownloadTracker(reactContext);
     }
 
     @Override
@@ -461,5 +476,104 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
         } else {
             waitForConnection(() -> callback.resolve(binder.getPlayback().getState()));
         }
+    }
+
+
+
+
+
+
+// Download functions
+
+    @ReactMethod
+    public void downloadStreamWithBitRate(String videoUri, String downloadID, int bitRate){
+        //TODO: Implement bitrate
+        downloadStream(videoUri,downloadID);
+    }
+
+    @ReactMethod
+    public void downloadStream(String uri, String downloadID){
+        final Uri videoUri = Uri.parse(uri);
+
+        Boolean isDownloaded = downloadTracker.isDownloaded(downloadID);
+
+        if(isDownloaded){
+            Log.i(TAG, "is downloaded");
+            downloadTracker.onDownloadErrorEvent(downloadID,"ALREADY_DOWNLOADED","The asset is already downloaded");
+            downloadTracker.onDownloadProgressEvent(downloadID, 100);
+            return;
+        }
+
+        Download download = downloadTracker.getDownload(downloadID);
+        if(download == null){
+            Log.i(TAG, "toggle native download");
+            downloadTracker.toggleDownload(downloadID, videoUri);
+        } else if (download.state == Download.STATE_DOWNLOADING) {
+            Log.i(TAG, "already downloading");
+            downloadTracker.onDownloadErrorEvent(downloadID, "ALREADY_DOWNLOADED", "The asset is already downloading");
+        } else {
+            com.google.android.exoplayer2.util.Log.d(TAG, "Download not started");
+        }
+    }
+
+    @ReactMethod
+    public void pauseDownload(final String downloadID){
+        Download download = downloadTracker.getDownload(downloadID);
+        if(download == null){
+            downloadTracker.onDownloadErrorEvent(downloadID,"NOT_FOUND","Download does not exist.");
+            return;
+        }
+
+        if(download.state == Download.STATE_DOWNLOADING) {
+            downloadTracker.pauseDownload(downloadID);
+        }
+    }
+
+    @ReactMethod
+    public void resumeDownload(final String downloadID){
+        Download download = downloadTracker.getDownload(downloadID);
+        if(download == null){
+            downloadTracker.onDownloadErrorEvent(downloadID,"NOT_FOUND","Download does not exist.");
+            return;
+        }
+
+        if(download.state == Download.STATE_QUEUED){
+            downloadTracker.resumeDownload(downloadID);
+        }
+    }
+
+    @ReactMethod
+    public void cancelDownload(final String downloadID){
+        deleteDownloadedStream(downloadID);
+    }
+
+    @ReactMethod
+    public void deleteDownloadedStream(final String downloadID){
+        Download download = downloadTracker.getDownload(downloadID);
+        if(download == null){
+            downloadTracker.onDownloadErrorEvent(downloadID,"NOT_FOUND","Download does not exist.");
+            return;
+        }
+        downloadTracker.deleteDownload(downloadID);
+        downloadTracker.onDownloadProgressEvent(downloadID,0);
+    }
+
+    @ReactMethod
+    public void checkIfStillDownloaded(ReadableArray downloadIDs, final Promise promise) {
+        WritableArray isDownloadedDownloadIDs = Arguments.createArray();
+        for (int i=0; i<downloadIDs.size(); i++) {
+            String stringId = downloadIDs.getString(i);
+            if (stringId != null) {
+                if (downloadTracker.isDownloaded(stringId)) {
+                    isDownloadedDownloadIDs.pushString(stringId);
+                }
+            }
+        }
+        promise.resolve(isDownloadedDownloadIDs);
+    }
+
+    @ReactMethod
+    public void updateDownloadCreds(String downloadID, String queryParam) {
+        downloadTracker.setDownloadCred(downloadID, queryParam);
     }
 }

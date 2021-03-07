@@ -56,3 +56,10 @@ example/ios/Pods
 ios/Pods
 ios/RNTrackPlayer.xcworkspace
 Podfile.lock
+
+.idea
+.gradle
+local.properties
+*.log
+.project
+.settings

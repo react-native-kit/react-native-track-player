@@ -63,15 +63,30 @@ class Track: NSObject, AudioItem, TimePitching, AssetOptionsProviding {
     }
     
     func updateMetadata(dictionary: [String: Any]) {
-        self.title = (dictionary["title"] as? String) ?? self.title
-        self.artist = (dictionary["artist"] as? String) ?? self.artist
-        
-        self.date = dictionary["date"] as? String
-        self.album = dictionary["album"] as? String
-        self.genre = dictionary["genre"] as? String
-        self.desc = dictionary["description"] as? String
-        self.duration = dictionary["duration"] as? Double
-        self.artworkURL = MediaURL(object: dictionary["artwork"])
+        if (dictionary.keys.contains("title")) {
+            self.title = dictionary["title"] as! String
+        }
+        if (dictionary.keys.contains("artist")) {
+            self.artist = dictionary["artist"] as! String
+        }
+        if (dictionary.keys.contains("date")) {
+            self.date = dictionary["date"] as? String
+        }
+        if (dictionary.keys.contains("album")) {
+            self.album = dictionary["album"] as? String
+        }
+        if (dictionary.keys.contains("genre")) {
+            self.genre = dictionary["genre"] as? String
+        }
+        if (dictionary.keys.contains("description")) {
+            self.desc = dictionary["description"] as? String
+        }
+        if (dictionary.keys.contains("duration")) {
+            self.duration = dictionary["duration"] as? Double
+        }
+        if (dictionary.keys.contains("artwork")) {
+            self.artworkURL = MediaURL(object: dictionary["artwork"])
+        }
         
         self.originalObject = self.originalObject.merging(dictionary) { (_, new) in new }
     }

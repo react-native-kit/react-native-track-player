@@ -63,7 +63,7 @@ public class Track {
     public String album;
     public String date;
     public String genre;
-    public long duration;
+    public long duration = 0;
     public Bundle originalItem;
 
     public RatingCompat rating;
@@ -110,16 +110,37 @@ public class Track {
     }
 
     public void setMetadata(Context context, Bundle bundle, int ratingType) {
-        artwork = Utils.getUri(context, bundle, "artwork");
+        if (bundle.containsKey("artwork")) {
+            artwork = Utils.getUri(context, bundle, "artwork");
+        }
 
-        title = bundle.getString("title");
-        artist = bundle.getString("artist");
-        album = bundle.getString("album");
-        date = bundle.getString("date");
-        genre = bundle.getString("genre");
-        duration = Utils.toMillis(bundle.getDouble("duration", 0));
+        if (bundle.containsKey("title")) {
+            title = bundle.getString("title");
+        }
 
-        rating = Utils.getRating(bundle, "rating", ratingType);
+        if (bundle.containsKey("artist")) {
+            artist = bundle.getString("artist");
+        }
+
+        if (bundle.containsKey("album")) {
+            album = bundle.getString("album");
+        }
+
+        if (bundle.containsKey("date")) {
+            date = bundle.getString("date");
+        }
+
+        if (bundle.containsKey("genre")) {
+            genre = bundle.getString("genre");
+        }
+
+        if (bundle.containsKey("duration")) {
+            duration = Utils.toMillis(bundle.getDouble("duration", 0));
+        }
+
+        if (bundle.containsKey("rating")) {
+            rating = Utils.getRating(bundle, "rating", ratingType);
+        }
 
         if (originalItem != null && originalItem != bundle)
             originalItem.putAll(bundle);

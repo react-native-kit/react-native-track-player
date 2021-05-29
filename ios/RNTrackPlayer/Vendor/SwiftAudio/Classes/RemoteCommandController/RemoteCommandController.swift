@@ -30,9 +30,11 @@ public class RemoteCommandController {
     }
     
     internal func enable(commands: [RemoteCommand]) {
-        self.disable(commands: RemoteCommand.all())
-        commands.forEach { (command) in
-            self.enable(command: command)
+        RemoteCommand.all().forEach { (command) in
+            self.disable(command: command)
+            if let newCommand = commands.first(where: {$0 == command}) {
+                self.enable(command: newCommand);
+            }
         }
     }
     

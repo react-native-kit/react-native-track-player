@@ -103,7 +103,7 @@ public struct FeedbackCommand: RemoteCommandProtocol {
     }
 }
 
-public enum RemoteCommand {
+public enum RemoteCommand : Equatable {
 
     case play
     
@@ -128,6 +128,42 @@ public enum RemoteCommand {
     case dislike(isActive: Bool, localizedTitle: String, localizedShortTitle: String)
     
     case bookmark(isActive: Bool, localizedTitle: String, localizedShortTitle: String)
+
+    var `case`: Case {
+      switch self {
+          case .play: return .play
+          case .pause: return .pause
+          case .stop: return .stop
+          case .togglePlayPause: return .togglePlayPause
+          case .next: return .next
+          case .previous: return .previous
+          case .changePlaybackPosition: return .changePlaybackPosition
+          case .skipForward: return .skipForward
+          case .skipBackward: return .skipBackward
+          case .like: return .like
+          case .dislike: return .dislike
+          case .bookmark: return .bookmark
+      }
+    }
+
+    enum Case {
+        case play
+        case pause
+        case stop
+        case togglePlayPause
+        case next
+        case previous
+        case changePlaybackPosition
+        case skipForward
+        case skipBackward
+        case like
+        case dislike
+        case bookmark
+    }
+
+    public static func ==(lhs: RemoteCommand, rhs: RemoteCommand) -> Bool {
+        return lhs.case == rhs.case
+    }
     
     /**
      All values in an array for convenience.

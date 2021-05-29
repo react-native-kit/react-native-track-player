@@ -51,6 +51,11 @@ public class MusicModule extends ReactContextBaseJavaModule implements ServiceCo
         eventHandler = new MusicEvents(context);
         manager.registerReceiver(eventHandler, new IntentFilter(Utils.EVENT_INTENT));
     }
+    
+    @Override    
+    public boolean canOverrideExistingModule() {        
+        return true;    
+    }
 
     @Override
     public void onCatalystInstanceDestroy() {

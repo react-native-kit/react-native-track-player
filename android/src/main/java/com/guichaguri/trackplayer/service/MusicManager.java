@@ -349,8 +349,12 @@ public class MusicManager implements OnAudioFocusChangeListener {
 
         // Stop receiving audio becoming noisy events
         if(receivingNoisyEvents) {
-            service.unregisterReceiver(noisyReceiver);
-            receivingNoisyEvents = false;
+            try {
+                service.unregisterReceiver(noisyReceiver);
+                receivingNoisyEvents = false;
+            } catch (Exception ex) {
+                Log.e(Utils.LOG, "An error occurred while unregistering the noisyReceiver: ", ex);
+            }
         }
 
         // Release the playback resources
